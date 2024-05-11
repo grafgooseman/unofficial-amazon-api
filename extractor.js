@@ -3,9 +3,10 @@ import { JSDOM } from 'jsdom';
 
 const testHtmlFiles = [
     'inspect-test-amazon.html',
-    'inspect-apple.html'
+    'inspect-apple.html',
 ];
 
+// 'inspect-test-not-amazon.html',
 
 console.log('Extractor');
 
@@ -21,16 +22,16 @@ for (const file of testHtmlFiles) {
 
 
     // Call the main function to perform the extractions
-    Object.assign(resultJson, extractProductTitle(document));
-    Object.assign(resultJson, extractBrandInfo(document));
+    // Object.assign(resultJson, extractProductTitle(document));
+    // Object.assign(resultJson, extractBrandInfo(document));
     Object.assign(resultJson, extractAverageRating(document));
     Object.assign(resultJson, extractRatingsCount(document));
     Object.assign(resultJson, extractPrice(document));
     Object.assign(resultJson, checkAmazonChoice(document));
-    Object.assign(resultJson, extractBoughtRecently(document));
-    Object.assign(resultJson, { productDetails: extractProductDetails(document) });
-    Object.assign(resultJson, { bulletPoints: extractBulletPoints(document) });
-    Object.assign(resultJson, { amazonProductDetails: extractAmazonProductDetails(document) });
+    // Object.assign(resultJson, extractBoughtRecently(document));
+    // Object.assign(resultJson, { productDetails: extractProductDetails(document) });
+    // Object.assign(resultJson, { bulletPoints: extractBulletPoints(document) });
+    // Object.assign(resultJson, { amazonProductDetails: extractAmazonProductDetails(document) });
 
     console.log(`\n\n\n--${file}------------------------`);
     console.log(resultJson);
@@ -137,16 +138,30 @@ function extractBrandInfo(document) {
 
 // Function to extract the average rating
 function extractAverageRating(document) {
-    const rating = document.querySelector(".a-icon-star");
-    if (rating) {
-        const ratingText = rating.textContent.trim();
+    let ratingElement = document.querySelector('.a-icon-star .a-icon-alt, .a-icon-star:first-child .a-icon-alt');
+
+    // Broader search.
+    if (!ratingElement) {
+        ratingElement = document.querySelector('.a-icon-star');
+    }
+
+    if (ratingElement) {
+        const ratingText = ratingElement.textContent.trim();
         const matches = ratingText.match(/([\d\.]+) out of 5 stars/);
+
         if (matches) {
             return { averageRating: parseFloat(matches[1]) };
+        } else {
+            // If the detailed match fails, try to capture numeric value (most likely raiting)
+            const simpleMatch = ratingText.match(/([\d\.]+)/);
+            if (simpleMatch) {
+                return { averageRating: parseFloat(simpleMatch[1]) };
+            }
         }
     }
     return { averageRating: null };
 }
+
 
 // Function to extract the number of ratings
 function extractRatingsCount(document) {
