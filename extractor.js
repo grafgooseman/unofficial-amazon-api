@@ -4,9 +4,10 @@ import { JSDOM } from 'jsdom';
 const testHtmlFiles = [
     'inspect-test-amazon.html',
     'inspect-apple.html',
+    'inspect-pullup-bar.html',
+    'inspect-test-not-amazon.html',
 ];
 
-// 'inspect-test-not-amazon.html',
 
 console.log('Extractor');
 
@@ -20,18 +21,25 @@ for (const file of testHtmlFiles) {
     const window = dom.window;
     const document = window.document;
 
+    Object.assign(resultJson, isAmazonProduct(document));
+
+    if (!resultJson.isAmazonProduct) {
+        console.log(`\n\n\n--${file}------------------------`);
+        console.log(resultJson);
+        continue;
+    }
 
     // Call the main function to perform the extractions
-    // Object.assign(resultJson, extractProductTitle(document));
-    // Object.assign(resultJson, extractBrandInfo(document));
+    Object.assign(resultJson, extractMetadata(document));
+    Object.assign(resultJson, extractBrandInfo(document));
     Object.assign(resultJson, extractAverageRating(document));
     Object.assign(resultJson, extractRatingsCount(document));
     Object.assign(resultJson, extractPrice(document));
     Object.assign(resultJson, checkAmazonChoice(document));
-    // Object.assign(resultJson, extractBoughtRecently(document));
-    // Object.assign(resultJson, { productDetails: extractProductDetails(document) });
-    // Object.assign(resultJson, { bulletPoints: extractBulletPoints(document) });
-    // Object.assign(resultJson, { amazonProductDetails: extractAmazonProductDetails(document) });
+    Object.assign(resultJson, extractBoughtRecently(document));
+    Object.assign(resultJson, { productDetails: extractProductDetails(document) });
+    Object.assign(resultJson, { bulletPoints: extractBulletPoints(document) });
+    Object.assign(resultJson, { amazonProductDetails: extractAmazonProductDetails(document) });
 
     console.log(`\n\n\n--${file}------------------------`);
     console.log(resultJson);
@@ -116,24 +124,34 @@ function extractAmazonProductDetails(document) {
 }
 
 // Function to extract the product title
-function extractProductTitle(document) {
-    const productTitle = document.querySelector("#productTitle");
-    if (productTitle) {
-        return { title: productTitle.textContent.trim() };
-    }
-    return { title: null };
+function extractMetadata(document) {
+    // Extract the title from the <title> element
+    const title = document.querySelector('title') ? document.querySelector('title').textContent : null;
+
+    // Extract the description from the <meta name="description"> tag
+    const metaDescription = document.querySelector('meta[name="description"]') ? document.querySelector('meta[name="description"]').getAttribute('content') : null;
+
+    // Optionally, extract the title from the <meta name="title"> tag if it's used differently
+    const metaTitle = document.querySelector('meta[name="title"]') ? document.querySelector('meta[name="title"]').getAttribute('content') : null;
+
+    // Return an object containing the extracted metadata
+    return {
+        title: title,
+        metaTitle: metaTitle,
+        description: metaDescription
+    };
 }
+
 
 // Function to extract the brand information
 function extractBrandInfo(document) {
     const brandLink = document.querySelector("#bylineInfo");
     if (brandLink) {
         return {
-            brand: brandLink.textContent.trim(),
             brandLink: brandLink.href
         };
     }
-    return { brand: null, brandLink: null };
+    return { brandLink: null };
 }
 
 // Function to extract the average rating
@@ -207,4 +225,17 @@ function extractBoughtRecently(document) {
         return { boughtRecently: boughtRecentlyElement.textContent.trim() };
     }
     return { boughtRecently: null };
+}
+
+function isAmazonProduct(document) {
+    const hasDescription = document.querySelector('meta[name="description"]') !== null;
+
+    const canonicalLink = document.querySelector('link[rel="canonical"]');
+    const isAmazonLink = canonicalLink ? canonicalLink.getAttribute('href').includes('amazon') : false;
+
+    const hasASIN = document.querySelector('[data-asin]') !== null;
+
+    const isAmazonProduct = hasDescription && isAmazonLink && hasASIN;
+
+    return { isAmazonProduct: isAmazonProduct };
 }
