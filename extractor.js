@@ -1,32 +1,27 @@
 import { readFile } from 'fs/promises';
 import { JSDOM } from 'jsdom';
 
-const testHtmlFiles = [
-    'inspect-test-amazon.html',
-    'inspect-apple.html',
-    'inspect-pullup-bar.html',
-    'inspect-test-not-amazon.html',
-];
 
-
-console.log('Extractor');
-
-for (const file of testHtmlFiles) {
-    const resultJson = {};
-
-    // const html = await loadHtmlFromFile('inspect-test-amazon.html');
-    const html = await loadHtmlFromFile(file);
-
+function extractAmazonData(html){
     const dom = new JSDOM(html);
     const window = dom.window;
     const document = window.document;
 
+    // Remove all script and style elements from the body
+    const scriptElements = document.querySelectorAll('script');
+    const styleElements = document.querySelectorAll('style');
+
+    scriptElements.forEach(elem => elem.parentNode.removeChild(elem));
+    styleElements.forEach(elem => elem.parentNode.removeChild(elem));
+
+
+
+    const resultJson = {};
+
     Object.assign(resultJson, isAmazonProduct(document));
 
     if (!resultJson.isAmazonProduct) {
-        console.log(`\n\n\n--${file}------------------------`);
-        console.log(resultJson);
-        continue;
+        return resultJson;
     }
 
     // Call the main function to perform the extractions
@@ -41,10 +36,54 @@ for (const file of testHtmlFiles) {
     Object.assign(resultJson, { bulletPoints: extractBulletPoints(document) });
     Object.assign(resultJson, { amazonProductDetails: extractAmazonProductDetails(document) });
 
-    console.log(`\n\n\n--${file}------------------------`);
-    console.log(resultJson);
+    return resultJson;
 }
 
+
+async function testExtraction() {
+    console.log('Extractor -TEST-');
+    
+    const testHtmlFiles = [
+        'inspect-test-amazon.html',
+        'inspect-apple.html',
+        'inspect-pullup-bar.html',
+        'inspect-test-not-amazon.html',
+    ];
+
+    for (const file of testHtmlFiles) {
+        const resultJson = {};
+
+        // const html = await loadHtmlFromFile('inspect-test-amazon.html');
+        const html = await loadHtmlFromFile(file);
+
+        const dom = new JSDOM(html);
+        const window = dom.window;
+        const document = window.document;
+
+        Object.assign(resultJson, isAmazonProduct(document));
+
+        if (!resultJson.isAmazonProduct) {
+            console.log(`\n\n\n--${file}------------------------`);
+            console.log(resultJson);
+            continue;
+        }
+
+        // Call the main function to perform the extractions
+        Object.assign(resultJson, extractMetadata(document));
+        Object.assign(resultJson, extractBrandInfo(document));
+        Object.assign(resultJson, extractAverageRating(document));
+        Object.assign(resultJson, extractRatingsCount(document));
+        Object.assign(resultJson, extractPrice(document));
+        Object.assign(resultJson, checkAmazonChoice(document));
+        Object.assign(resultJson, extractBoughtRecently(document));
+        Object.assign(resultJson, { productDetails: extractProductDetails(document) });
+        Object.assign(resultJson, { bulletPoints: extractBulletPoints(document) });
+        Object.assign(resultJson, { amazonProductDetails: extractAmazonProductDetails(document) });
+
+        console.log(`\n\n\n--${file}------------------------`);
+        console.log(resultJson);
+    }
+}
 
 
 
@@ -228,7 +267,8 @@ function extractBoughtRecently(document) {
 }
 
 function isAmazonProduct(document) {
-    const hasDescription = document.querySelector('meta[name="description"]') !== null;
+    const desc = document.querySelector('meta[name="description"]');
+    const hasDescription = desc !== null && desc.content != "";
 
     const canonicalLink = document.querySelector('link[rel="canonical"]');
     const isAmazonLink = canonicalLink ? canonicalLink.getAttribute('href').includes('amazon') : false;
@@ -239,3 +279,6 @@ function isAmazonProduct(document) {
 
     return { isAmazonProduct: isAmazonProduct };
 }
+
+
+export { extractAmazonData };

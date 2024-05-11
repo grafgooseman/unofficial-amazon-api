@@ -5,42 +5,57 @@ import { dirname, join } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
 import { JSDOM } from 'jsdom';
 dotenv.config();
+import { extractAmazonData } from './extractor.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+async function scrape(url) {
+    const [response, error] = await beeRequest(url);
 
-// const testUrl = "https://www.amazon.ca/WHOOSH-Screen-Cleaner-Premium-Microfiber/dp/B0874X5Q6Z";
-// const testUrl = "https://www.amazon.ca/Apple-AirPods-Charging-Latest-Model/dp/B07PXGQC1Q/ref=sr_1_4";
-const testUrl = "https://www.amazon.ca/KAKICLAY-Upgrade-Multi-Grip-Larger-Technology/dp/B09BCLRHYL/ref=pd_ci_mcx_mh_mcx_views_0";
+    if (error) {
+        throw new Error('Failed to fetch the page');
+    }
 
-const result = await beeRequest(testUrl);
-console.log("Bee Request finished, status: ", result[0].status);
+    const data = extractAmazonData(response.data);
 
-console.log(result[0].data);
-const html = result[0].data;
-
-// Create a DOM environment
-const dom = new JSDOM(html);
-const window = dom.window;
-const document = window.document;
-const bodyElement = document.querySelector('body');
-
-// Remove all script and style elements from the body
-const scriptElements = bodyElement.querySelectorAll('script');
-const styleElements = bodyElement.querySelectorAll('style');
-
-scriptElements.forEach(elem => elem.parentNode.removeChild(elem));
-styleElements.forEach(elem => elem.parentNode.removeChild(elem));
-
-// Get the cleaned HTML of the body
-const cleanedBodyHtml = bodyElement.innerHTML;
-// console.log(bodyHtml);
-
-await writeHtmlToFile(cleanedBodyHtml);
+    return data;
+}
 
 
-console.log("End");
+async function testScrape() {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
 
+    // const testUrl = "https://www.amazon.ca/WHOOSH-Screen-Cleaner-Premium-Microfiber/dp/B0874X5Q6Z";
+    // const testUrl = "https://www.amazon.ca/Apple-AirPods-Charging-Latest-Model/dp/B07PXGQC1Q/ref=sr_1_4";
+    const testUrl = "https://www.amazon.ca/KAKICLAY-Upgrade-Multi-Grip-Larger-Technology/dp/B09BCLRHYL/ref=pd_ci_mcx_mh_mcx_views_0";
+
+    const result = await beeRequest(testUrl);
+    console.log("Bee Request finished, status: ", result[0].status);
+
+    // console.log(result[0].data);
+    const html = result[0].data;
+
+    // Create a DOM environment
+    const dom = new JSDOM(html);
+    const window = dom.window;
+    const document = window.document;
+    const bodyElement = document.querySelector('body');
+
+    // Remove all script and style elements from the body
+    const scriptElements = bodyElement.querySelectorAll('script');
+    const styleElements = bodyElement.querySelectorAll('style');
+
+    scriptElements.forEach(elem => elem.parentNode.removeChild(elem));
+    styleElements.forEach(elem => elem.parentNode.removeChild(elem));
+
+    // Get the cleaned HTML of the body
+    const cleanedBodyHtml = bodyElement.innerHTML;
+    // console.log(bodyHtml);
+
+    await writeHtmlToFile(cleanedBodyHtml);
+
+
+    console.log("End");
+}
 
 
 // Functions -------------------------------------------------------------------
@@ -75,7 +90,7 @@ function writeHtmlToFile(bodyHtml) {
 
 }
 
-function getTestHtml(){
+function getTestHtml() {
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -134,3 +149,5 @@ function getTestHtml(){
     </html>
     `
 }
+
+export { scrape };
